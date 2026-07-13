@@ -61,7 +61,8 @@ const select = (dest, opts, cls, val) => {
 };
 
 const existDeleter = (clsList) => clsList.forEach(c => document.querySelectorAll(`.${c}`).forEach(el => el.remove()));
-let shot = () => {
+
+const shot = () => {
     let vid = document.querySelector('.video');
     let canvas = document.createElement('canvas');
     canvas.width = vid.videoWidth;
@@ -233,10 +234,7 @@ const player = (dets) => {
         ambilightLoop = requestAnimationFrame(updateAmbilight);
     };
 
-    vid.addEventListener('play', () => { updateAmbilight(); });
-    vid.addEventListener('pause', () => {
-        cancelAnimationFrame(ambilightLoop);
-    });
+
     let isRecordingGif = false;
     let gifInterval;
     let gif;
@@ -283,7 +281,7 @@ const player = (dets) => {
 
     let events = [{
         element: vid,
-        events: [{ type: 'play', func: () => playBtn.textContent = 'Pause' }, { type: 'pause', func: () => playBtn.textContent = 'Play' }, {
+        events: [{ type: 'play', func: () => { playBtn.textContent = 'Pause'; updateAmbilight(); } }, { type: 'pause', func: () => { playBtn.textContent = 'Play'; cancelAnimationFrame(ambilightLoop); }}, {
             type: 'ratechange',
             func: () => {
                 speedSelect.value = vid.playbackRate;
