@@ -39,7 +39,6 @@ const video = (dest, dets, controls, cls) => {
         src: `${filepath}\\${dets.file.name}`,
         controls,
         controlsList: 'nodownload noplaybackrate',
-        disablePictureInPicture: true,
         poster: posterSrc
     });
 };
@@ -160,7 +159,7 @@ const player = (dets) => {
     volInput.max = 1;
     volInput.step = 0.01;
 
-    btn(control, 'SnapShot', () => {
+    btn(control, 'SnapShot', (e) => {
         let canvas = shot();
         canvas.toBlob((blob) => {
             let url = URL.createObjectURL(blob);
@@ -168,40 +167,46 @@ const player = (dets) => {
             link.href = url;
             link.download = `ss_${Math.floor(vid.currentTime)}s.png`;
             link.click();
-            URL.revokeObjectURL(url);
+            setTimeout(() => URL.revokeObjectURL(url), 100);
         }, 'image/png');
     });
 
     let mediaRecorder;
     let recordedChunks = [];
 
-    btn(control, 'Start Clip', () => {
-        recordedChunks = [];
-        let stream = vid.captureStream();
-        mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
-
-        mediaRecorder.ondataavailable = (event) => {
-            if (event.data.size > 0) recordedChunks.push(event.data);
-        };
-
-        mediaRecorder.onstop = () => {
-            let blob = new Blob(recordedChunks, { type: 'video/webm' });
-            let url = URL.createObjectURL(blob);
-            let a = document.createElement('a');
-            a.href = url;
-            a.download = `clip_${Date.now()}.webm`;
-            a.click();
-            URL.revokeObjectURL(url);
-        };
-
-        mediaRecorder.start();
-        console.log("Recording started...");
-    });
-
-    btn(control, 'Stop Clip', () => {
+    btn(control, 'Start Clip', (e) => {
         if (mediaRecorder && mediaRecorder.state !== "inactive") {
+            e.target.textContent = 'Start Clip';
             mediaRecorder.stop();
             console.log("Recording stopped and downloading...");
+        } else {
+            e.target.textContent = 'Stop Clip';
+            e.target.setAttribute('active', 'true');
+            recordedChunks = [];
+            let stream = vid.captureStream();
+            mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+            mediaRecorder.ondataavailable = (event) => {
+                if (event.data.size > 0) recordedChunks.push(event.data);
+            };
+
+            mediaRecorder.onstop = () => {
+                let blob = new Blob(recordedChunks, { type: 'video/webm' });
+                let url = URL.createObjectURL(blob);
+                let a = document.createElement('a');
+                a.href = url;
+                a.download = `clip_${Date.now()}.webm`;
+                a.click();
+                setTimeout(() => URL.revokeObjectURL(url), 100);
+            };
+
+            mediaRecorder.start();
+            console.log("Recording started...");
+
+            // Now that the recording pipeline is ready, we resume playback
+            let playPromise = vid.play();
+            if (playPromise !== undefined) {
+                playPromise.catch(error => console.log("Playback error:", error));
+            }
         }
     });
 
@@ -276,6 +281,97 @@ const player = (dets) => {
             console.log("Rendering GIF... (this might take a few seconds)");
             gif.render();
         }, 3000);
+    });
+
+    btn(control, 'Pop Up Window', (e) => {
+        if(document.pictureInPictureElement){
+            document.exitPictureInPicture();
+            e.target.textContent = 'Pop Up Window';
+        }
+        else{
+            vid.requestPictureInPicture();
+            e.target.textContent = 'Pop In Window';
+        }
+    })
+
+    btn(control, 'rotate', (e) => {
+        // Parse current rotation from a data attribute, default to 0
+        const currentRotation = parseInt(vid.dataset.rotation || '0', 10);
+        const newRotation = (currentRotation + 90) % 360;
+
+        // Store the new rotation state
+        vid.dataset.rotation = newRotation;
+
+        // Temporarily clear margins to get true layout dimensions
+        vid.style.margin = '5px';
+        const w = vid.offsetWidth;
+        const h = vid.offsetHeight;
+
+        const isVertical = newRotation === 90 || newRotation === 270;
+
+        // When rotated 90 or 270 degrees, swap the effective layout footprint
+        // by applying margins. This forces the container to "shift shape".
+        if (isVertical) {
+            const marginY = (w - h) / 2;
+            const marginX = (h - w) / 25;
+            vid.style.margin = `${marginY}px ${marginX}px`;
+        }
+
+        // Apply the new rotation with a smooth transition
+        Object.assign(vid.style, {
+            transform: `rotate(${newRotation}deg)`,
+            transition: 'transform 0.3s ease, margin 0.3s ease'
+        });
+    })
+    let subSelect = select(control, [['Subtitles', true]], 'subtitles');
+    let trackSelect = select(control, [['Audio Tracks', true]], 'tracks');
+
+    // Attempt to extract tracks when video metadata loads
+    vid.addEventListener('loadedmetadata', () => {
+        // Extract Text Tracks (Subtitles)
+        if (vid.textTracks && vid.textTracks.length > 0) {
+            subSelect.innerHTML = ''; // Clear dummy option
+            make('option', subSelect, 'option', { textContent: 'Off', value: '-1' });
+            
+            Array.from(vid.textTracks).forEach((track, index) => {
+                make('option', subSelect, 'option', {
+                    textContent: track.label || track.language || `Subtitle ${index + 1}`,
+                    value: index
+                });
+            });
+
+            // Control subtitle visibility
+            subSelect.onchange = (e) => {
+                const selectedIndex = parseInt(e.target.value);
+                Array.from(vid.textTracks).forEach((track, index) => {
+                    track.mode = (index === selectedIndex) ? 'showing' : 'hidden';
+                });
+            };
+        } else {
+            subSelect.innerHTML = '<option disabled selected>No Subtitles Found</option>';
+        }
+
+        // Extract Audio Tracks (Note: audioTracks API has limited browser support, mostly Safari/Edge)
+        if (vid.audioTracks && vid.audioTracks.length > 0) {
+            trackSelect.innerHTML = ''; 
+            
+            Array.from(vid.audioTracks).forEach((track, index) => {
+                make('option', trackSelect, 'option', {
+                    textContent: track.label || track.language || `Audio Track ${index + 1}`,
+                    value: index
+                });
+            });
+
+            // Control active audio track
+            trackSelect.onchange = (e) => {
+                const selectedIndex = parseInt(e.target.value);
+                Array.from(vid.audioTracks).forEach((track, index) => {
+                    track.enabled = (index === selectedIndex);
+                });
+            };
+        } else {
+            trackSelect.innerHTML = '<option disabled selected>No Audio Tracks Found</option>';
+        }
     });
 
 
