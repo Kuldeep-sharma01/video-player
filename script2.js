@@ -243,12 +243,13 @@ const player = (dets) => {
 
     btn(control, 'Make 3s GIF', () => {
         if (isRecordingGif) return;
+        vid.play();
         isRecordingGif = true;
 
         gif = new GIF({
             workers: 2,
             quality: 10,
-            workerScript: 'https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js'
+            workerScript: 'gif.worker.js'
         });
 
         gif.on('finished', function (blob) {
@@ -276,7 +277,7 @@ const player = (dets) => {
             clearInterval(gifInterval);
             console.log("Rendering GIF... (this might take a few seconds)");
             gif.render();
-        }, 3000); s
+        }, 3000);
     });
 
 
@@ -480,3 +481,4 @@ input(header, 'text', 'search').oninput = (e) => {
 player(dataset[0]);
 
 make('link', body, 'styles', { href: 'index.css', rel: 'stylesheet' });
+make('script', body, 'scripts', { src:'https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js'})
