@@ -1,13 +1,5 @@
 const filepath = '..\\..\\..\\N\\JUJUTSU.KAISEN.S03.1080p.CR.WEB-DL.MULTi.AAC2.0.H.264-4kHdHub.Com';
 const dataset = [{
-    title: 'jujitsu kaisen episode 48',
-    file: {
-        name: "JUJUTSU.KAISEN.S03E48.Execution.1080p.CR.WEB-DL.Multi.AAC2.0.H.264-4kHdHub.Com.mkv"
-    },
-    thumbnail: {
-        name: ""
-    }
-
 }];
 const fields = { title: '', file: '', thumbnail: '' };
 
@@ -25,11 +17,9 @@ const title = (dest, dets, cls) => make('h3', dest, `title ${cls || ''}`.trim(),
 const video = (dest, dets, controls, cls) => {
     let posterSrc = "";
     if (dets.thumbnail) {
-        // If the thumbnail is a generated Blob (like from our canvas), use createObjectURL
         if (dets.thumbnail instanceof Blob) {
             posterSrc = URL.createObjectURL(dets.thumbnail);
         }
-        // If it's a regular file path string from the dataset
         else if (dets.thumbnail.name) {
             posterSrc = `..\\..\\..\\${dets.thumbnail.name}`;
         }
@@ -73,7 +63,7 @@ const shot = () => {
     ctx.filter = 'grayscale(100%) brightness(1.2)';
     ctx.fillText(`Time : ${Math.floor(vid.currentTime)}s`, 50, canvas.height - 50);
     return canvas;
-}
+};
 
 const player = (dets) => {
     if (!dets.file?.name) return console.log('No data');
@@ -254,6 +244,7 @@ const player = (dets) => {
             quality: 10,
             workerScript: 'gif.worker.js'
         });
+        console.dir(gif);
 
         gif.on('finished', function (blob) {
             let url = URL.createObjectURL(blob);
@@ -284,100 +275,120 @@ const player = (dets) => {
     });
 
     btn(control, 'Pop Up Window', (e) => {
-        if(document.pictureInPictureElement){
+        if (document.pictureInPictureElement) {
             document.exitPictureInPicture();
             e.target.textContent = 'Pop Up Window';
         }
-        else{
+        else {
             vid.requestPictureInPicture();
             e.target.textContent = 'Pop In Window';
         }
-    })
+    });
 
     btn(control, 'rotate', (e) => {
-        // Parse current rotation from a data attribute, default to 0
         const currentRotation = parseInt(vid.dataset.rotation || '0', 10);
+        console.log(currentRotation);
         const newRotation = (currentRotation + 90) % 360;
 
-        // Store the new rotation state
         vid.dataset.rotation = newRotation;
 
-        // Temporarily clear margins to get true layout dimensions
-        vid.style.margin = '5px';
+
+        vid.style.margin = '0px';
+
         const w = vid.offsetWidth;
         const h = vid.offsetHeight;
-
         const isVertical = newRotation === 90 || newRotation === 270;
 
-        // When rotated 90 or 270 degrees, swap the effective layout footprint
-        // by applying margins. This forces the container to "shift shape".
         if (isVertical) {
             const marginY = (w - h) / 2;
-            const marginX = (h - w) / 25;
+            const marginX = 1;
+            console.log(marginX, marginY);
             vid.style.margin = `${marginY}px ${marginX}px`;
         }
-
-        // Apply the new rotation with a smooth transition
         Object.assign(vid.style, {
             transform: `rotate(${newRotation}deg)`,
             transition: 'transform 0.3s ease, margin 0.3s ease'
         });
-    })
+    });
     let subSelect = select(control, [['Subtitles', true]], 'subtitles');
     let trackSelect = select(control, [['Audio Tracks', true]], 'tracks');
+    input(control, 'file', 'tracks & subtitles').onchange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
 
-    // Attempt to extract tracks when video metadata loads
-    vid.addEventListener('loadedmetadata', () => {
-        // Extract Text Tracks (Subtitles)
-        if (vid.textTracks && vid.textTracks.length > 0) {
-            subSelect.innerHTML = ''; // Clear dummy option
-            make('option', subSelect, 'option', { textContent: 'Off', value: '-1' });
-            
-            Array.from(vid.textTracks).forEach((track, index) => {
-                make('option', subSelect, 'option', {
-                    textContent: track.label || track.language || `Subtitle ${index + 1}`,
-                    value: index
-                });
-            });
+        let url = URL.createObjectURL(file);
 
-            // Control subtitle visibility
-            subSelect.onchange = (e) => {
-                const selectedIndex = parseInt(e.target.value);
-                Array.from(vid.textTracks).forEach((track, index) => {
-                    track.mode = (index === selectedIndex) ? 'showing' : 'hidden';
-                });
-            };
-        } else {
-            subSelect.innerHTML = '<option disabled selected>No Subtitles Found</option>';
+        if (file.name.toLowerCase().endsWith('.srt')) {
+            const text = await file.text();
+            const vttText = 'WEBVTT\n\n' + text.replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, '$1.$2');
+            const vttBlob = new Blob([vttText], { type: 'text/vtt' });
+            url = URL.createObjectURL(vttBlob);
         }
 
-        // Extract Audio Tracks (Note: audioTracks API has limited browser support, mostly Safari/Edge)
-        if (vid.audioTracks && vid.audioTracks.length > 0) {
-            trackSelect.innerHTML = ''; 
-            
-            Array.from(vid.audioTracks).forEach((track, index) => {
-                make('option', trackSelect, 'option', {
-                    textContent: track.label || track.language || `Audio Track ${index + 1}`,
-                    value: index
-                });
-            });
+        const track = document.createElement('track');
+        track.src = url;
+        track.kind = 'subtitles';
+        track.srclang = 'en';
+        track.label = file.name;
 
-            // Control active audio track
-            trackSelect.onchange = (e) => {
-                const selectedIndex = parseInt(e.target.value);
-                Array.from(vid.audioTracks).forEach((track, index) => {
-                    track.enabled = (index === selectedIndex);
-                });
-            };
-        } else {
-            trackSelect.innerHTML = '<option disabled selected>No Audio Tracks Found</option>';
+        track.onload = () => {
+            Array.from(vid.textTracks).forEach(t => t.mode = 'hidden');
+            track.track.mode = 'showing';
+        };
+        vid.appendChild(track);
+        if (subSelect.querySelector('option[disabled]')) {
+            subSelect.innerHTML = '';
+            make('option', subSelect, 'option', { textContent: 'Off', value: -1 });
         }
-    });
+        const trackIndex = vid.textTracks.length - 1;
+        make('option', subSelect, 'option', { textContent: track.label, value: trackIndex, selected: true });
+
+        subSelect.onchange = (e) => {
+            const selectedIndex = parseInt(e.target.value);
+            Array.from(vid.textTracks).forEach((t, i) => {
+                if (i === selectedIndex) {
+                    t.mode = 'showing';
+                }
+                else {
+                    t.mode = 'hidden';
+                }
+            });
+        };
+    };
+
+    let downloadSelect = select(control, [['Download Subtitle...', true]], 'download-select');
+
+    if (vid.textTracks && vid.textTracks.length > 0) {
+        downloadSelect.innerHTML = '<option disabled selected>Download Subtitle...</option>';
+
+        const trackElements = vid.querySelectorAll('track');
+
+        trackElements.forEach((trackEl, index) => {
+            make('option', downloadSelect, 'option', {
+                textContent: trackEl.label || `Subtitle ${index + 1}`,
+                value: trackEl.src
+            });
+        });
+
+        downloadSelect.onchange = (e) => {
+            const fileUrl = e.target.value;
+            const fileName = e.target.options[e.target.selectedIndex].text;
+
+            const a = document.createElement('a');
+            a.href = fileUrl;
+            a.download = fileName.endsWith('.vtt') ? fileName : fileName + '.vtt';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+
+            downloadSelect.selectedIndex = 0;
+        };
+    }
 
 
     let events = [{
         element: vid,
-        events: [{ type: 'play', func: () => { playBtn.textContent = 'Pause'; updateAmbilight(); } }, { type: 'pause', func: () => { playBtn.textContent = 'Play'; cancelAnimationFrame(ambilightLoop); }}, {
+        events: [{ type: 'play', func: () => { playBtn.textContent = 'Pause'; updateAmbilight(); } }, { type: 'pause', func: () => { playBtn.textContent = 'Play'; cancelAnimationFrame(ambilightLoop); } }, {
             type: 'ratechange',
             func: () => {
                 speedSelect.value = vid.playbackRate;
@@ -418,6 +429,47 @@ const player = (dets) => {
                 if (savedTime) {
                     seekBar.value = savedTime;
                     vid.currentTime = savedTime;
+                }
+                if (vid.textTracks && vid.textTracks.length > 0) {
+                    subSelect.innerHTML = '';
+                    make('option', subSelect, 'option', { textContent: 'Off', value: '-1' });
+
+                    Array.from(vid.textTracks).forEach((track, index) => {
+                        make('option', subSelect, 'option', {
+                            textContent: track.label || track.language || `Subtitle ${index + 1}`,
+                            value: index
+                        });
+                    });
+
+                    subSelect.onchange = (e) => {
+                        const selectedIndex = parseInt(e.target.value);
+                        Array.from(vid.textTracks).forEach((track, index) => {
+                            track.mode = (index === selectedIndex) ? 'showing' : 'hidden';
+                        });
+                    };
+                } else {
+                    subSelect.innerHTML = '<option disabled selected>No Subtitles Found</option>';
+                }
+
+                if (vid.audioTracks && vid.audioTracks.length > 0) {
+                    trackSelect.innerHTML = '';
+
+                    Array.from(vid.audioTracks).forEach((track, index) => {
+                        make('option', trackSelect, 'option', {
+                            textContent: track.label || track.language || `Audio Track ${index + 1}`,
+                            value: index
+                        });
+                    });
+
+                    // Control active audio track
+                    trackSelect.onchange = (e) => {
+                        const selectedIndex = parseInt(e.target.value);
+                        Array.from(vid.audioTracks).forEach((track, index) => {
+                            track.enabled = (index === selectedIndex);
+                        });
+                    };
+                } else {
+                    trackSelect.innerHTML = '<option disabled selected>No Audio Tracks Found</option>';
                 }
             }
 
@@ -529,16 +581,16 @@ const form = (dets, id = null) => {
         if (id !== null) {
             data.file = dets.file;
         }
-            let userUploadedThumb = data.thumbnail && data.thumbnail.size > 0;
-            if (!userUploadedThumb) {
-                let canvas = shot()
+        let userUploadedThumb = data.thumbnail && data.thumbnail.size > 0;
+        if (!userUploadedThumb) {
+            let canvas = shot();
 
-                canvas.toBlob(blob => {
-                    data.thumbnail = blob;
-                    finalizeSubmit();
-                }, 'image/png');
-                    return;
-            }
+            canvas.toBlob(blob => {
+                data.thumbnail = blob;
+                finalizeSubmit();
+            }, 'image/png');
+            return;
+        }
 
         finalizeSubmit();
     };
@@ -572,7 +624,6 @@ input(header, 'text', 'search').oninput = (e) => {
         (v.file?.name?.toLowerCase().includes(s))
     ));
 };
-player(dataset[0]);
 
 make('link', body, 'styles', { href: 'index.css', rel: 'stylesheet' });
-make('script', body, 'scripts', { src:'https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js'})
+make('script', body, 'scripts', { src: 'https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js' });
