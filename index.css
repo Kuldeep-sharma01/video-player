@@ -152,8 +152,9 @@ form input{
 .custom-controls{
 width: 100%;
 display: flex;
-justify-content: center;
-align-items: center;
+flex-wrap: wrap;
+/* justify-content: center;
+align-items: center; */
 /* padding: 15px; */
 background-color: aqua;
 border-radius: 15px;
@@ -183,5 +184,5 @@ input[type="range"]{
     color:blue;
 }
 #volume{
-    width:auto
+    width:auto;
 }
