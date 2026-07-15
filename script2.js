@@ -1,4 +1,4 @@
-const filepath = '..\\..\\..\\N\\JUJUTSU.KAISEN.S03.1080p.CR.WEB-DL.MULTi.AAC2.0.H.264-4kHdHub.Com';
+const filepath = 'Media\\JUJUTSU.KAISEN.S03.1080p.CR.WEB-DL.MULTi.AAC2.0.H.264-4kHdHub.Com'; // static directory path
 const dataset = [{
 }];
 const fields = { title: '', file: '', thumbnail: '' };
@@ -53,7 +53,7 @@ const existDeleter = (clsList) => clsList.forEach(c => document.querySelectorAll
 
 const shot = () => {
     let vid = document.querySelector('.video');
-    let canvas = document.createElement('canvas');
+    let canvas = document.createElement('canvas'); // this is function created for extracting image from a video element using frame element
     canvas.width = vid.videoWidth;
     canvas.height = vid.videoHeight;
     let ctx = canvas.getContext('2d');
@@ -150,6 +150,7 @@ const player = (dets) => {
     volInput.step = 0.01;
 
     btn(control, 'SnapShot', (e) => {
+        e.preventDefault()
         let canvas = shot();
         canvas.toBlob((blob) => {
             let url = URL.createObjectURL(blob);
@@ -165,8 +166,10 @@ const player = (dets) => {
     let recordedChunks = [];
 
     btn(control, 'Start Clip', (e) => {
+        e.preventDefault()
         if (mediaRecorder && mediaRecorder.state !== "inactive") {
             e.target.textContent = 'Start Clip';
+            e.target.setAttribute('active', 'false');
             mediaRecorder.stop();
             console.log("Recording stopped and downloading...");
         } else {
@@ -192,7 +195,6 @@ const player = (dets) => {
             mediaRecorder.start();
             console.log("Recording started...");
 
-            // Now that the recording pipeline is ready, we resume playback
             let playPromise = vid.play();
             if (playPromise !== undefined) {
                 playPromise.catch(error => console.log("Playback error:", error));
@@ -287,7 +289,6 @@ const player = (dets) => {
 
     btn(control, 'rotate', (e) => {
         const currentRotation = parseInt(vid.dataset.rotation || '0', 10);
-        console.log(currentRotation);
         const newRotation = (currentRotation + 90) % 360;
 
         vid.dataset.rotation = newRotation;
@@ -302,7 +303,6 @@ const player = (dets) => {
         if (isVertical) {
             const marginY = (w - h) / 2;
             const marginX = 1;
-            console.log(marginX, marginY);
             vid.style.margin = `${marginY}px ${marginX}px`;
         }
         Object.assign(vid.style, {
@@ -385,6 +385,7 @@ const player = (dets) => {
         };
     }
 
+    // made an object for events and their handlers
 
     let events = [{
         element: vid,
@@ -461,7 +462,6 @@ const player = (dets) => {
                         });
                     });
 
-                    // Control active audio track
                     trackSelect.onchange = (e) => {
                         const selectedIndex = parseInt(e.target.value);
                         Array.from(vid.audioTracks).forEach((track, index) => {
@@ -532,7 +532,7 @@ const input = (dest, type = 'text', name = '', val = '', lisnr) => {
                     src: URL.createObjectURL(file),
                     controls: true,
                     disablePictureInPicture: true,
-                    style: "margin-top: 10px; border-radius: 10px;" // Add a little styling
+                    style: "margin-top: 10px; border-radius: 10px;"
                 });
             }
         };
@@ -625,5 +625,5 @@ input(header, 'text', 'search').oninput = (e) => {
     ));
 };
 
-make('link', body, 'styles', { href: 'index.css', rel: 'stylesheet' });
-make('script', body, 'scripts', { src: 'https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js' });
+make('link', body, 'styles', { href: 'index.css', rel: 'stylesheet' }); // css file attachment code
+make('script', body, 'scripts', { src: 'https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js' });// it is a code for gif generation
