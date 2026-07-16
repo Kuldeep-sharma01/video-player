@@ -1,4 +1,4 @@
-const filepath = 'Media\\JUJUTSU.KAISEN.S03.1080p.CR.WEB-DL.MULTi.AAC2.0.H.264-4kHdHub.Com'; // static directory path
+const filepath = 'upload\\'; // static directory path
 const dataset = [{
 }];
 const fields = { title: '', file: '', thumbnail: '' };
