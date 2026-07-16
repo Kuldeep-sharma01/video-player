@@ -1,4 +1,4 @@
-#Made a good Video Player Using JavaScript DOM interface and complete able to work on live server
+# Made a good Video Player Using JavaScript DOM interface and complete able to work on live server
 
 You can modify the static path of the media and run it it play nice 
 
